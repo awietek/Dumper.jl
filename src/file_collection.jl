@@ -29,9 +29,13 @@ function read_collection_h5(collection::FileCollection, tag::AbstractString)
 
             # read hdf5 data
             file = joinpath(collection.directory, file)
-            dset = h5read(file, tag)
-            ndims = length(size(dset))
-            data[param] = permutedims(dset, ndims:-1:1)
+            try
+                dset = h5read(file, tag)
+                ndims = length(size(dset))
+                data[param] = permutedims(dset, ndims:-1:1)
+            catch
+                println("cannot read from file", file)
+            end
         end
     end
     return sort(collect(data), by = x->x[1])
