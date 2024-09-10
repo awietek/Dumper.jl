@@ -2,7 +2,9 @@ module Dumper
 using HDF5
 using Printf
 
-export DumpFile, write_data!, dump!, read_data, FileCollection, filenames, read_collection_h5
+import Base.keys, Base.read
+export DumpFile, write_data!, dump!, read_data
+export FileCollection, files
 
 include("create_extensible.jl")
 include("append_extensible.jl")
