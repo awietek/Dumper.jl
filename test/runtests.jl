@@ -97,6 +97,18 @@ using Test
     xrr = fl["testx"]
     @test isapprox(xrr, x)
 
+    # test dumping vector of strings
+    s1 = ["hello", "world", "foo"]
+    s2 = ["bar", "baz", "qux"]
+    s3 = ["one", "two", "three"]
+    dump!(fl, "strings", s1)
+    dump!(fl, "strings", s2)
+    dump!(fl, "strings", s3)
+    data = read_data(fl, "strings")
+    @test data[1,:] == s1
+    @test data[2,:] == s2
+    @test data[3,:] == s3
+
 
     dump!(fl, "matrix2", A)
     dump!(fl, "matrix2", B)

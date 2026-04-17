@@ -79,6 +79,50 @@ function append_extensible(fid::HDF5.File, name::AbstractString, data::Vector{T}
 end
 
 
+function append_extensible(fid::HDF5.File, name::AbstractString, data::Vector{<:AbstractString})
+    N = length(data)
+
+    dim_t = Tuple{HDF5.API.hsize_t, HDF5.API.hsize_t}
+
+    dtype = HDF5.API.h5t_copy(HDF5.API.H5T_C_S1)
+    HDF5.API.h5t_set_size(dtype, HDF5.API.H5T_VARIABLE)
+    HDF5.API.h5t_set_cset(dtype, HDF5.API.H5T_CSET_UTF8)
+
+    dataset_id = HDF5.API.h5d_open(fid, name, HDF5.API.H5P_DEFAULT)
+    dims, max_dims = get_dataset_dims(dataset_id)
+
+    if length(dims) != 2
+        throw(@sprintf("Cannot append to dataset \"%s\": not in shape for a vector of strings", name))
+    end
+
+    dataspace_id = HDF5.API.h5d_get_space(dataset_id)
+    new_dims = dim_t((dims[1]+1, dims[2]))
+    HDF5.API.h5d_set_extent(dataset_id, Ref(new_dims))
+
+    filespace_id = HDF5.API.h5d_get_space(dataset_id)
+    offset = dim_t((dims[1], 0))
+    stride = dim_t((1, 1))
+    count = dim_t((1, N))
+    block = dim_t((1, 1))
+
+    HDF5.API.h5s_select_hyperslab(filespace_id, HDF5.API.H5S_SELECT_SET, Ref(offset),
+                                  Ref(stride), Ref(count), Ref(block))
+
+    memspace_id = HDF5.API.h5s_create_simple(2, Ref(count), Ref(count))
+
+    GC.@preserve data begin
+        ptrs = [Base.unsafe_convert(Cstring, s) for s in data]
+        HDF5.API.h5d_write(dataset_id, dtype, memspace_id, filespace_id,
+                           HDF5.API.H5P_DEFAULT, ptrs)
+    end
+
+    HDF5.API.h5s_close(memspace_id)
+    HDF5.API.h5s_close(filespace_id)
+    HDF5.API.h5s_close(dataspace_id)
+    HDF5.API.h5d_close(dataset_id)
+    HDF5.API.h5t_close(dtype)
+end
+
 function append_extensible(fid::HDF5.File, name::AbstractString, data::Matrix{T}) where T
     M, N = size(data)
     
