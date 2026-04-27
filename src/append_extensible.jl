@@ -4,7 +4,7 @@ function get_dataset_dims(dataset_id::HDF5.API.hid_t)
     return dims, max_dims
 end
 
-function append_extensible(fid::HDF5.File, name::AbstractString, data)
+function append_extensible(fid::HDF5.File, name::AbstractString, data; warn_size_mismatch::Bool=true)
     dim_t = Tuple{HDF5.API.hsize_t, HDF5.API.hsize_t}
     dtype = HDF5.datatype(data)
     
@@ -40,7 +40,7 @@ function append_extensible(fid::HDF5.File, name::AbstractString, data)
     HDF5.API.h5d_close(dataset_id)
 end
 
-function append_extensible(fid::HDF5.File, name::AbstractString, data::Vector{T}) where T
+function append_extensible(fid::HDF5.File, name::AbstractString, data::Vector{T}; warn_size_mismatch::Bool=true) where T
     N = length(data)
     
     dim_t = Tuple{HDF5.API.hsize_t, HDF5.API.hsize_t}
@@ -51,6 +51,12 @@ function append_extensible(fid::HDF5.File, name::AbstractString, data::Vector{T}
    
     if length(dims) != 2
         throw(@sprintf("Cannot append to dataset \"%s\": not in shape for a vector", name))
+    end
+
+    if N > dims[2]
+        error(@sprintf("Cannot append to dataset \"%s\": data length (%d) is larger than dataset dimension (%d).", name, N, dims[2]))
+    elseif N < dims[2] && warn_size_mismatch
+        @warn @sprintf("Appending to dataset \"%s\": data length (%d) is shorter than dataset dimension (%d). Missing entries will be padded.", name, N, dims[2])
     end
        
     dataspace_id = HDF5.API.h5d_get_space(dataset_id)
@@ -123,7 +129,7 @@ function append_extensible(fid::HDF5.File, name::AbstractString, data::Vector{<:
     HDF5.API.h5t_close(dtype)
 end
 
-function append_extensible(fid::HDF5.File, name::AbstractString, data::Matrix{T}) where T
+function append_extensible(fid::HDF5.File, name::AbstractString, data::Matrix{T}; warn_size_mismatch::Bool=true) where T
     M, N = size(data)
     
     dim_t = Tuple{HDF5.API.hsize_t, HDF5.API.hsize_t, HDF5.API.hsize_t}
@@ -134,6 +140,12 @@ function append_extensible(fid::HDF5.File, name::AbstractString, data::Matrix{T}
    
     if length(dims) != 3
         throw(@sprintf("Cannot append to dataset \"%s\": not in shape for a matrix", name))
+    end
+
+    if M > dims[2] || N > dims[3]
+        error(@sprintf("Cannot append to dataset \"%s\": data size (%d, %d) is larger than dataset dimensions (%d, %d).", name, M, N, dims[2], dims[3]))
+    elseif (M < dims[2] || N < dims[3]) && warn_size_mismatch
+        @warn @sprintf("Appending to dataset \"%s\": data size (%d, %d) is smaller than dataset dimensions (%d, %d). Missing entries will be padded.", name, M, N, dims[2], dims[3])
     end
        
     dataspace_id = HDF5.API.h5d_get_space(dataset_id)
