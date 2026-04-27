@@ -64,5 +64,37 @@ using Test
         @test mat_data[4, 2, 2] == 0.0
     end
 
+    @testset "Test String Vector Appending" begin
+        # Setup: Initial dump (Length 3)
+        dump!(dfile, "test_string_vector", ["apple", "banana", "cherry"])
+
+        # Test exact match (Length 3)
+        @test_logs dump!(dfile, "test_string_vector", ["dog", "elephant", "fox"])
+
+        # Test smaller array (Length 2) with default warning
+        @test_logs (:warn, r"data length \(2\) is shorter than dataset dimension \(3\)") begin
+            dump!(dfile, "test_string_vector", ["grape", "honeydew"])
+        end
+
+        # Test smaller array (Length 1) with warning disabled
+        @test_logs dump!(dfile, "test_string_vector", ["ice"]; warn_size_mismatch=false)
+
+        # Test larger array (Should throw ErrorException)
+        @test_throws ErrorException("Cannot append to dataset \"test_string_vector\": data length (4) is larger than dataset dimension (3).") begin
+            dump!(dfile, "test_string_vector", ["jackal", "kangaroo", "lion", "monkey"])
+        end
+    end
+
+    @testset "Verify that padding works correctly for string vectors" begin
+        str_data = read_data(dfile, "test_string_vector")
+        
+        # The 3rd append was length 2. The 3rd column should be padded with an empty string.
+        @test str_data[3, 3] == "" 
+        
+        # The 4th append was length 1. The 2nd and 3rd columns should be empty.
+        @test str_data[4, 2] == ""
+        @test str_data[4, 3] == ""
+    end
+
     rm(filename, force=true)
 end

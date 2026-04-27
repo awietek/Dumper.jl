@@ -85,7 +85,7 @@ function append_extensible(fid::HDF5.File, name::AbstractString, data::Vector{T}
 end
 
 
-function append_extensible(fid::HDF5.File, name::AbstractString, data::Vector{<:AbstractString})
+function append_extensible(fid::HDF5.File, name::AbstractString, data::Vector{<:AbstractString}; warn_size_mismatch::Bool=true)
     N = length(data)
 
     dim_t = Tuple{HDF5.API.hsize_t, HDF5.API.hsize_t}
@@ -99,6 +99,12 @@ function append_extensible(fid::HDF5.File, name::AbstractString, data::Vector{<:
 
     if length(dims) != 2
         throw(@sprintf("Cannot append to dataset \"%s\": not in shape for a vector of strings", name))
+    end
+
+    if N > dims[2]
+        error(@sprintf("Cannot append to dataset \"%s\": data length (%d) is larger than dataset dimension (%d).", name, N, dims[2]))
+    elseif N < dims[2] && warn_size_mismatch
+        @warn @sprintf("Appending to dataset \"%s\": data length (%d) is shorter than dataset dimension (%d). Missing entries will be padded.", name, N, dims[2])
     end
 
     dataspace_id = HDF5.API.h5d_get_space(dataset_id)
