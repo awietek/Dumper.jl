@@ -35,13 +35,13 @@ function write_data!(dfile::DumpFile, name::AbstractString, data::AbstractArray)
 end
 
 
-function dump!(dfile::DumpFile, name::AbstractString, data; chunk_size=nothing)
+function dump!(dfile::DumpFile, name::AbstractString, data; chunk_size=nothing, warn_size_mismatch::Bool=true)
     h5open(dfile.filename, "cw") do fid
         if HDF5.API.h5l_exists(fid, name, HDF5.API.H5P_DEFAULT)
-            append_extensible(fid, name, data)
+            append_extensible(fid, name, data; warn_size_mismatch)
         else
             create_extensible(fid, name, data; chunk_size=chunk_size)
-            append_extensible(fid, name, data)
+            append_extensible(fid, name, data; warn_size_mismatch)
         end        
     end
 end
